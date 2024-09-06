@@ -4,37 +4,75 @@ import (
 	"context"
 	"log"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 
-	"github.com/chromedp/chromedp"
+	"github.com/dranikpg/gtrs"
+
+	"github.com/konstfish/og-peek/capture/pkg/chrome"
+	"github.com/konstfish/og-peek/capture/pkg/config"
+	"github.com/konstfish/og-peek/capture/pkg/redis"
+	"github.com/konstfish/og-peek/capture/pkg/screenshot"
 )
 
 func main() {
-	ctx, cancel := chromedp.NewContext(context.Background())
-	defer cancel()
-
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	var buf []byte
-	if err := chromedp.Run(ctx, screenshotTask("https://konst.fish/blog/OTel-Collector-SpanMetrics-Tempo", &buf)); err != nil {
-		log.Fatal(err)
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	if err := os.WriteFile("screenshot.png", buf, 0644); err != nil {
-		log.Fatal(err)
-	}
-}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-func screenshotTask(url string, res *[]byte) chromedp.Tasks {
-	return chromedp.Tasks{
-		chromedp.Navigate(url),
-		chromedp.EmulateViewport(1200, 630),
-		chromedp.WaitReady("body", chromedp.ByQuery),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			time.Sleep(2 * time.Second)
-			return nil
-		}),
-		chromedp.CaptureScreenshot(res),
+	chromeCancelFunc, err := chrome.Initialize(ctx)
+	if err != nil {
+		log.Fatalf("Failed to initialize Chrome: %v", err)
+	}
+	defer chromeCancelFunc()
+
+	redisClient, err := redis.NewClient(cfg.RedisAddr)
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+	defer redisClient.Close()
+
+	consumerName, err := os.Hostname()
+	if err != nil {
+		consumerName = "capture"
+	}
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		log.Println("goodbye!")
+		cancel()
+	}()
+
+	cs := gtrs.NewGroupConsumer[redis.CaptureTask](ctx, redisClient.Rdb, "capture", consumerName, cfg.RedisStreamName, ">")
+
+	log.Println("started capture service")
+
+	for msg := range cs.Chan() {
+		select {
+		case <-ctx.Done():
+			cs.Close()
+			return
+		default:
+			taskCtx := context.Background()
+			log.Println(msg)
+
+			err := screenshot.Capture(taskCtx, msg.Data.Url)
+			if err != nil {
+				log.Printf("Failed to capture screenshot: %v", err)
+				msg.Err = err
+				log.Println(redisClient.Set(ctx, msg.Data.Slug, "failed"))
+			} else {
+				log.Println(redisClient.Set(ctx, msg.Data.Slug, "cached"))
+			}
+
+			cs.Ack(msg)
+		}
 	}
 }

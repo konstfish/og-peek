@@ -1,0 +1,14 @@
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  capture:
+    deploy:
+      mode: replicated
+      replicas: 4
+    environment:
+      - REDIS_ADDR=redis:6379
+    build: ./capture
+    image: ghcr.io/konstfish/peek-capture:latest
