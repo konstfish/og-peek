@@ -11,4 +11,6 @@ services:
     environment:
       - REDIS_ADDR=redis:6379
     build: ./capture
+    volumes:
+      - ./screenshots:/tmp
     image: ghcr.io/konstfish/peek-capture:latest

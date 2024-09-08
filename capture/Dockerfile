@@ -14,8 +14,8 @@ FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates chromium
 
-WORKDIR /
+WORKDIR /tmp
 
-COPY --from=builder /app/main .
+COPY --from=builder /app/main /app/main
 
-CMD ["./main"]
+CMD ["/app/main"]

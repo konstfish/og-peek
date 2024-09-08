@@ -1,0 +1,1 @@
+document.querySelectorAll('meta[property=og\\:image]')[0].setAttribute('content', window.location.href)
