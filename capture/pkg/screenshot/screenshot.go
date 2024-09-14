@@ -7,10 +7,9 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
-	"github.com/konstfish/og-peek/capture/pkg/formatting"
 )
 
-func Capture(ctx context.Context, url string) error {
+func Capture(ctx context.Context, url string) ([]byte, error) {
 	taskCtx, cancel := chromedp.NewContext(ctx)
 	defer cancel()
 
@@ -19,15 +18,20 @@ func Capture(ctx context.Context, url string) error {
 
 	var buf []byte
 	if err := chromedp.Run(taskCtx, captureScreenshot(url, &buf)); err != nil {
-		return fmt.Errorf("failed to capture screenshot: %v", err)
+		return nil, fmt.Errorf("failed to capture screenshot: %v", err)
 	}
 
-	filename := fmt.Sprintf("%s.png", formatting.UrlToSlug(url))
+	// filename := fmt.Sprintf("%s.png", formatting.UrlToSlug(url))
+	// writeScreenshot(filename, buf)
+	// fmt.Printf("screenshot saved: %s\n", filename)
+
+	return buf, nil
+}
+
+func writeScreenshot(filename string, buf []byte) error {
 	if err := os.WriteFile(filename, buf, 0644); err != nil {
 		return fmt.Errorf("failed to save screenshot: %v", err)
 	}
-
-	fmt.Printf("screenshot saved: %s\n", filename)
 	return nil
 }
 

@@ -1,1 +1,1 @@
-document.querySelectorAll('meta[property=og\\:image]')[0].setAttribute('content', window.location.href)
+document.head.appendChild(document.querySelector('meta[property="og:image"]') || document.createElement('meta')).outerHTML = '<meta property="og:image" content="' + window.location.href + '">';

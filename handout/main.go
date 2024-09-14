@@ -10,11 +10,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/konstfish/og-peek/handout/pkg/cache"
 	"github.com/konstfish/og-peek/handout/pkg/config"
+	"github.com/konstfish/og-peek/handout/pkg/controllers"
 	"github.com/konstfish/og-peek/handout/pkg/formatting"
 )
 
 func setupRouter() *gin.Engine {
 	r := gin.Default()
+
+	r.Use(controllers.Cors())
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.String(http.StatusOK, "pong")

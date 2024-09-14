@@ -10,6 +10,8 @@ services:
       replicas: 4
     environment:
       - REDIS_ADDR=redis:6379
+    env_file: ".env.s3"
+
     build: ./capture
     volumes:
       - ./screenshots:/tmp

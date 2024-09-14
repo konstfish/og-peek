@@ -13,6 +13,7 @@ import (
 	"github.com/konstfish/og-peek/capture/pkg/config"
 	"github.com/konstfish/og-peek/capture/pkg/redis"
 	"github.com/konstfish/og-peek/capture/pkg/screenshot"
+	"github.com/konstfish/og-peek/capture/pkg/storage"
 )
 
 func main() {
@@ -41,6 +42,12 @@ func main() {
 		consumerName = "capture"
 	}
 
+	// setup storage
+	s3Client, err := storage.NewClient(cfg.S3Endpoint, cfg.S3BucketName, cfg.S3AccessKeyId, cfg.S3AccessKey, true)
+	if err != nil {
+		log.Fatalf("Failed to set up S3 Client: %v", err)
+	}
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -63,13 +70,26 @@ func main() {
 			taskCtx := context.Background()
 			log.Println(msg)
 
-			err := screenshot.Capture(taskCtx, msg.Data.Url)
+			content, err := screenshot.Capture(taskCtx, msg.Data.Url)
 			if err != nil {
 				log.Printf("Failed to capture screenshot: %v", err)
 				msg.Err = err
-				log.Println(redisClient.Set(ctx, msg.Data.Slug, "failed"))
+
+				err := redisClient.Set(ctx, msg.Data.Slug, "failed")
+				if err != nil {
+					log.Printf("Failed to set failed status: %v", err)
+				}
 			} else {
-				log.Println(redisClient.Set(ctx, msg.Data.Slug, "cached"))
+				// upload to s3
+				err := storage.Upload(taskCtx, s3Client, content, msg.Data.Slug)
+				if err != nil {
+					log.Printf("Failed to upload to S3: %v", err)
+				}
+
+				err = redisClient.Set(ctx, msg.Data.Slug, "cached")
+				if err != nil {
+					log.Printf("Failed to set failed status: %v", err)
+				}
 			}
 
 			cs.Ack(msg)

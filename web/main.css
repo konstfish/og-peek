@@ -1,0 +1,20 @@
+.panel {
+    max-width: 400px;
+}
+
+.panel-image{
+    padding: 0 0 0 0;
+}
+
+.panel-image img{
+    width: 100%;
+    aspect-ratio: 1200 / 630;
+    border-top-left-radius: var(--border-rad-main);
+    border-top-right-radius: var(--border-rad-main);
+
+    background: url('load.svg') no-repeat center center;
+}
+
+.panel-image-footer {
+    padding: 6px;
+}

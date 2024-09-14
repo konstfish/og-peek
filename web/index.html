@@ -4,9 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+
+    <link rel="stylesheet" href="https://components.konst.fish/main.css">
+    <link rel="stylesheet" href="main.css">
+
     <script src="v1/main.js"></script>
+
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <meta name="htmx-config" content='{"selfRequestsOnly": false}' />
 </head>
 <body>
-    hello!
+
+
+    <div class="panel panel-adjust panel-image">
+        <img class="header" src="http://localhost:8080/get?url=https://konst.fish/blog/OTel-Collector-SpanMetrics-Tempo">
+        <div class="panel-image-footer">
+            <h3>🌐 konst.fish</h3>
+        </div>
+    </div>
 </body>
 </html>
