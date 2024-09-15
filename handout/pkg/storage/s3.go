@@ -31,18 +31,12 @@ func NewClient(endpoint string, bucketName string, accessKeyID string, secretAcc
 	return client, nil
 }
 
-func Download(ctx context.Context, client S3Client, content []byte, slug string) error {
-	log.Println(client.BucketName)
-
-	// TODO: stream this as response
-
+func Download(ctx context.Context, client S3Client, slug string) (*minio.Object, error) {
 	obj, err := client.MinioClient.GetObject(ctx, client.BucketName, fmt.Sprintf("%s.png", slug), minio.GetObjectOptions{})
 	if err != nil {
-		return err
+		log.Println("error downloading", slug, err)
+		return nil, err
 	}
 
-	// TODO: pull some telemetry from info var
-
-	log.Printf("Successfully uploaded %s of size %d\n", slug, info.Size)
-	return nil
+	return obj, nil
 }

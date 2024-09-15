@@ -12,7 +12,10 @@ import (
 	"github.com/konstfish/og-peek/handout/pkg/config"
 	"github.com/konstfish/og-peek/handout/pkg/controllers"
 	"github.com/konstfish/og-peek/handout/pkg/formatting"
+	"github.com/konstfish/og-peek/handout/pkg/storage"
 )
+
+var s3Client storage.S3Client
 
 func setupRouter() *gin.Engine {
 	r := gin.Default()
@@ -60,8 +63,17 @@ func setupRouter() *gin.Engine {
 					time.Sleep(500 * time.Millisecond)
 					stateChan <- cache.GetUrlStatus(ctx, slug)
 				case cache.StatusCached:
-					c.Writer.Header().Set("Content-Type", "image/png")
-					c.File(fmt.Sprintf("../screenshots/%s.png", slug))
+					// c.File(fmt.Sprintf("../screenshots/%s.png", slug))
+					obj, err := storage.Download(ctx, s3Client, slug)
+					if err != nil {
+						c.String(http.StatusServiceUnavailable, "failed to retrieve screenshot from storage")
+						cache.SetUrlStatus(ctx, slug, cache.StatusFailed)
+						return
+					}
+
+					defer obj.Close()
+
+					controllers.StreamObject(c, obj)
 					return
 				case cache.StatusFailed:
 					err, ttl := cache.GetUrlTTL(ctx, slug)
@@ -91,6 +103,12 @@ func main() {
 	err = cache.SetupCacheClient(cfg.RedisAddr)
 	if err != nil {
 		log.Fatalf("Failed to setup cache client: %v", err)
+	}
+
+	// setup storage
+	s3Client, err = storage.NewClient(cfg.S3Endpoint, cfg.S3BucketName, cfg.S3AccessKeyId, cfg.S3AccessKey, true)
+	if err != nil {
+		log.Fatalf("Failed to set up S3 Client: %v", err)
 	}
 
 	r := setupRouter()

@@ -35,8 +35,6 @@ func NewClient(endpoint string, bucketName string, accessKeyID string, secretAcc
 func Upload(ctx context.Context, client S3Client, content []byte, slug string) error {
 	contentType := "image/png"
 
-	log.Println(client.BucketName)
-
 	info, err := client.MinioClient.PutObject(ctx, client.BucketName, fmt.Sprintf("%s.png", slug), bytes.NewReader(content), int64(len(content)), minio.PutObjectOptions{ContentType: contentType})
 	if err != nil {
 		return err
