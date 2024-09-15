@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -15,8 +16,9 @@ var (
 	StatusFailed   = "failed"
 )
 
-func GetUrlStatus(ctx context.Context, slug string) string {
-	result, err := rdb.Get(ctx, slug).Result()
+func GetUrlStatus(ctx context.Context, domain string, slug string) string {
+	key := fmt.Sprintf("domain:%s:%s", domain, slug)
+	result, err := rdb.Get(ctx, key).Result()
 	if err != nil {
 		return StatusNotFound
 	}
@@ -24,8 +26,9 @@ func GetUrlStatus(ctx context.Context, slug string) string {
 	return result
 }
 
-func GetUrlTTL(ctx context.Context, slug string) (error, int) {
-	ttl, err := rdb.TTL(ctx, slug).Result()
+func GetUrlTTL(ctx context.Context, domain string, slug string) (error, int) {
+	key := fmt.Sprintf("domain:%s:%s", domain, slug)
+	ttl, err := rdb.TTL(ctx, key).Result()
 	if err != nil {
 		return err, 0
 	}
@@ -33,16 +36,17 @@ func GetUrlTTL(ctx context.Context, slug string) (error, int) {
 	return nil, int(ttl.Hours())
 }
 
-func SetUrlStatus(ctx context.Context, slug string, value string) {
-	err := rdb.Set(ctx, slug, value, 96*time.Hour).Err()
+func SetUrlStatus(ctx context.Context, domain string, slug string, value string) {
+	key := fmt.Sprintf("domain:%s:%s", domain, slug)
+	err := rdb.Set(ctx, key, value, 96*time.Hour).Err()
 	if err != nil {
 		log.Printf("Failed to set cache: %v", err)
 	}
 }
 
-func SubmitUrlTask(ctx context.Context, url string, slug string) {
+func SubmitUrlTask(ctx context.Context, domain string, slug string, url string) {
 	rdb.XAdd(ctx, &redis.XAddArgs{
 		Stream: "screenshot-urls",
-		Values: map[string]interface{}{"url": url, "slug": slug},
+		Values: map[string]interface{}{"url": url, "slug": slug, "domain": domain},
 	})
 }

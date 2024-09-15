@@ -28,6 +28,7 @@ func (c *Client) Close() error {
 	return c.Rdb.Close()
 }
 
-func (c *Client) Set(ctx context.Context, key string, value string) error {
+func (c *Client) Set(ctx context.Context, domain string, slug string, value string) error {
+	key := fmt.Sprintf("domain:%s:%s", domain, slug)
 	return c.Rdb.Set(ctx, key, value, 96*time.Hour).Err()
 }

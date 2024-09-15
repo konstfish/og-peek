@@ -32,10 +32,10 @@ func NewClient(endpoint string, bucketName string, accessKeyID string, secretAcc
 	return client, nil
 }
 
-func Upload(ctx context.Context, client S3Client, content []byte, slug string) error {
+func Upload(ctx context.Context, client S3Client, content []byte, domain string, slug string) error {
 	contentType := "image/png"
 
-	info, err := client.MinioClient.PutObject(ctx, client.BucketName, fmt.Sprintf("%s.png", slug), bytes.NewReader(content), int64(len(content)), minio.PutObjectOptions{ContentType: contentType})
+	info, err := client.MinioClient.PutObject(ctx, client.BucketName, fmt.Sprintf("%s/%s.png", domain, slug), bytes.NewReader(content), int64(len(content)), minio.PutObjectOptions{ContentType: contentType})
 	if err != nil {
 		return err
 	}

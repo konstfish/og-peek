@@ -8,7 +8,7 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func StreamObject(c *gin.Context, minioObj *minio.Object) {
+func streamObject(c *gin.Context, minioObj *minio.Object) {
 	c.Header("Content-Type", "image/png")
 
 	objInfo, err := minioObj.Stat()

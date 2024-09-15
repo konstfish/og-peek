@@ -57,6 +57,7 @@ func main() {
 		cancel()
 	}()
 
+	// TODO: split this into a separate function
 	cs := gtrs.NewGroupConsumer[redis.CaptureTask](ctx, redisClient.Rdb, "capture", consumerName, cfg.RedisStreamName, ">")
 
 	log.Println("started capture service")
@@ -75,20 +76,20 @@ func main() {
 				log.Printf("Failed to capture screenshot: %v", err)
 				msg.Err = err
 
-				err := redisClient.Set(ctx, msg.Data.Slug, "failed")
+				err := redisClient.Set(ctx, msg.Data.Domain, msg.Data.Slug, "failed")
 				if err != nil {
-					log.Printf("Failed to set failed status: %v", err)
+					log.Printf("Failed to set status: %v", err)
 				}
 			} else {
 				// upload to s3
-				err := storage.Upload(taskCtx, s3Client, content, msg.Data.Slug)
+				err := storage.Upload(taskCtx, s3Client, content, msg.Data.Domain, msg.Data.Slug)
 				if err != nil {
 					log.Printf("Failed to upload to S3: %v", err)
 				}
 
-				err = redisClient.Set(ctx, msg.Data.Slug, "cached")
+				err = redisClient.Set(ctx, msg.Data.Domain, msg.Data.Slug, "cached")
 				if err != nil {
-					log.Printf("Failed to set failed status: %v", err)
+					log.Printf("Failed to set status: %v", err)
 				}
 			}
 
