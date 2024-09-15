@@ -38,7 +38,7 @@ func GetUrlTTL(ctx context.Context, domain string, slug string) (error, int) {
 
 func SetUrlStatus(ctx context.Context, domain string, slug string, value string) {
 	key := fmt.Sprintf("domain:%s:%s", domain, slug)
-	err := rdb.Set(ctx, key, value, 96*time.Hour).Err()
+	err := rdb.Set(ctx, key, value, 7*24*time.Hour).Err()
 	if err != nil {
 		log.Printf("Failed to set cache: %v", err)
 	}

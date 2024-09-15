@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -35,7 +36,17 @@ func NewClient(endpoint string, bucketName string, accessKeyID string, secretAcc
 func Upload(ctx context.Context, client S3Client, content []byte, domain string, slug string) error {
 	contentType := "image/png"
 
-	info, err := client.MinioClient.PutObject(ctx, client.BucketName, fmt.Sprintf("%s/%s.png", domain, slug), bytes.NewReader(content), int64(len(content)), minio.PutObjectOptions{ContentType: contentType})
+	info, err := client.MinioClient.PutObject(
+		ctx,
+		client.BucketName,
+		fmt.Sprintf("%s/%s.png", domain, slug),
+		bytes.NewReader(content),
+		int64(len(content)),
+		minio.PutObjectOptions{
+			ContentType: contentType,
+			Expires:     time.Now().Add(7 * 24 * time.Hour),
+		},
+	)
 	if err != nil {
 		return err
 	}

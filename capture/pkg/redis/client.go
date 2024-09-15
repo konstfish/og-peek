@@ -30,5 +30,5 @@ func (c *Client) Close() error {
 
 func (c *Client) Set(ctx context.Context, domain string, slug string, value string) error {
 	key := fmt.Sprintf("domain:%s:%s", domain, slug)
-	return c.Rdb.Set(ctx, key, value, 96*time.Hour).Err()
+	return c.Rdb.Set(ctx, key, value, 7*24*time.Hour).Err()
 }
