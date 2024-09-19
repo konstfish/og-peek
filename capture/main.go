@@ -8,6 +8,7 @@ import (
 	"github.com/konstfish/og-peek/capture/pkg/config"
 	"github.com/konstfish/og-peek/capture/pkg/queue"
 	"github.com/konstfish/og-peek/capture/pkg/redis"
+	"github.com/konstfish/og-peek/capture/pkg/storage"
 )
 
 func main() {
@@ -34,11 +35,11 @@ func main() {
 	}
 	defer redis.Rdb.Close()
 
-	/*log.Println("setting up storage")
+	log.Println("setting up storage")
 	err = storage.NewClient(cfg.S3Endpoint, cfg.S3BucketName, cfg.S3AccessKeyId, cfg.S3AccessKey, true)
 	if err != nil {
 		log.Fatalf("Failed to set up S3 client: %v", err)
-	}*/
+	}
 
 	log.Println("setting up message queue")
 	queue.SignalHandler(cancel)
