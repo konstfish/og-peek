@@ -3,97 +3,47 @@ package main
 import (
 	"context"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
-
-	"github.com/dranikpg/gtrs"
 
 	"github.com/konstfish/og-peek/capture/pkg/chrome"
 	"github.com/konstfish/og-peek/capture/pkg/config"
+	"github.com/konstfish/og-peek/capture/pkg/queue"
 	"github.com/konstfish/og-peek/capture/pkg/redis"
-	"github.com/konstfish/og-peek/capture/pkg/screenshot"
-	"github.com/konstfish/og-peek/capture/pkg/storage"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	log.Println("loading config")
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	log.Println("setting up chrome")
 	chromeCancelFunc, err := chrome.Initialize(ctx)
 	if err != nil {
 		log.Fatalf("Failed to initialize Chrome: %v", err)
 	}
 	defer chromeCancelFunc()
 
-	redisClient, err := redis.NewClient(cfg.RedisAddr)
+	log.Println("setting up redis")
+	err = redis.NewClient(cfg.RedisAddr)
 	if err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
-	defer redisClient.Close()
+	defer redis.Rdb.Close()
 
-	consumerName, err := os.Hostname()
+	/*log.Println("setting up storage")
+	err = storage.NewClient(cfg.S3Endpoint, cfg.S3BucketName, cfg.S3AccessKeyId, cfg.S3AccessKey, true)
 	if err != nil {
-		consumerName = "capture"
-	}
+		log.Fatalf("Failed to set up S3 client: %v", err)
+	}*/
 
-	// setup storage
-	s3Client, err := storage.NewClient(cfg.S3Endpoint, cfg.S3BucketName, cfg.S3AccessKeyId, cfg.S3AccessKey, true)
-	if err != nil {
-		log.Fatalf("Failed to set up S3 Client: %v", err)
-	}
+	log.Println("setting up message queue")
+	queue.SignalHandler(cancel)
+	queue.NewClient(ctx, cfg)
+	defer queue.Close()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-sigChan
-		log.Println("goodbye!")
-		cancel()
-	}()
-
-	// TODO: split this into a separate function
-	cs := gtrs.NewGroupConsumer[redis.CaptureTask](ctx, redisClient.Rdb, "capture", consumerName, cfg.RedisStreamName, ">")
-
-	log.Println("started capture service")
-
-	for msg := range cs.Chan() {
-		select {
-		case <-ctx.Done():
-			cs.Close()
-			return
-		default:
-			taskCtx := context.Background()
-			log.Println(msg)
-
-			content, err := screenshot.Capture(taskCtx, msg.Data.Url)
-			if err != nil {
-				log.Printf("Failed to capture screenshot: %v", err)
-				msg.Err = err
-
-				err := redisClient.Set(ctx, msg.Data.Domain, msg.Data.Slug, "failed")
-				if err != nil {
-					log.Printf("Failed to set status: %v", err)
-				}
-			} else {
-				// upload to s3
-				err := storage.Upload(taskCtx, s3Client, content, msg.Data.Domain, msg.Data.Slug)
-				if err != nil {
-					log.Printf("Failed to upload to S3: %v", err)
-				}
-
-				err = redisClient.Set(ctx, msg.Data.Domain, msg.Data.Slug, "cached")
-				if err != nil {
-					log.Printf("Failed to set status: %v", err)
-				}
-			}
-
-			cs.Ack(msg)
-		}
-	}
+	queue.Listen(ctx)
 }

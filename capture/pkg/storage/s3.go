@@ -11,34 +11,37 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+var s3Client *S3Client
+
 type S3Client struct {
 	MinioClient *minio.Client
 	BucketName  string
 }
 
-func NewClient(endpoint string, bucketName string, accessKeyID string, secretAccessKey string, useSSL bool) (S3Client, error) {
+func NewClient(endpoint string, bucketName string, accessKeyID string, secretAccessKey string, useSSL bool) error {
 	minioClient, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
 		Secure: useSSL,
 	})
 	if err != nil {
-		return S3Client{}, err
+		return err
 	}
 
-	var client = S3Client{
+	s3Client = &S3Client{
 		MinioClient: minioClient,
 		BucketName:  bucketName,
 	}
 
-	return client, nil
+	return nil
 }
 
-func Upload(ctx context.Context, client S3Client, content []byte, domain string, slug string) error {
+func Upload(ctx context.Context, content []byte, domain string, slug string) error {
 	contentType := "image/png"
 
-	info, err := client.MinioClient.PutObject(
+	// store image in bucket, set expiry to
+	info, err := s3Client.MinioClient.PutObject(
 		ctx,
-		client.BucketName,
+		s3Client.BucketName,
 		fmt.Sprintf("%s/%s.png", domain, slug),
 		bytes.NewReader(content),
 		int64(len(content)),

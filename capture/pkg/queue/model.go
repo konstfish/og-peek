@@ -1,4 +1,4 @@
-package redis
+package queue
 
 type CaptureTask struct {
 	Url         string
