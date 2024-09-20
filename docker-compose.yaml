@@ -4,15 +4,23 @@ services:
     ports:
       - "6379:6379"
 
+  handout:
+    build: ./handout
+    environment:
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "8080:8080"
+    env_file: ".env.s3"
+    image: ghcr.io/konstfish/peek_handout:latest
+
   capture:
+    build: ./capture
     deploy:
       mode: replicated
       replicas: 4
     environment:
       - REDIS_ADDR=redis:6379
     env_file: ".env.s3"
-
-    build: ./capture
     volumes:
       - ./screenshots:/tmp
-    image: ghcr.io/konstfish/peek-capture:latest
+    image: ghcr.io/konstfish/peek_capture:latest

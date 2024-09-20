@@ -12,8 +12,7 @@ RUN --mount=type=cache,target="/root/.cache/go-build" CGO_ENABLED=0 GOOS=linux g
 
 FROM alpine:latest
 
-# TODO: slim this down, chromium is massive
-RUN apk --no-cache add ca-certificates chromium font-noto-emoji
+RUN apk --no-cache add ca-certificates
 
 WORKDIR /tmp
 
